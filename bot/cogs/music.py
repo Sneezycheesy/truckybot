@@ -23,6 +23,7 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.player = None
+        self.playing = False
 
 ########################################################################################################################
     # Listeners #
@@ -34,7 +35,9 @@ class Music(commands.Cog):
             if not [m for m in before.channel.members if not m.bot]:
                 for i in self.bot.voice_clients:
                     if i.channel is before.channel:
+                        self.player.stop()
                         await i.disconnect()
+                        self.playing = False
                         await self.bot.change_presence(activity=discord.Game(".help"))
 
 ########################################################################################################################
@@ -81,11 +84,12 @@ class Music(commands.Cog):
                 else:
                     raise AlreadyConnectedToChannel
             self.player = voice = await channel.connect()
+            self.playing = True
             source = FFmpegPCMAudio("http://live.truckers.fm")
             voice.play(source)
             song = ""
 
-            while True:
+            while self.playing:
                 current_song_json = json.loads(requests
                                                .get("https://api.truckyapp.com/v2/truckersfm/lastPlayed")
                                                .content)["response"]
@@ -105,7 +109,9 @@ class Music(commands.Cog):
     @commands.command(name="disconnect", aliases=["leave"], pass_context=True)
     async def disconnect_from_voice(self, ctx):
         if ctx.voice_client is not None:
+            self.player.stop()
             await ctx.guild.voice_client.disconnect()
+            self.playing = False
             await self.bot.change_presence(activity=discord.Game(".help"))
         else:
             raise NotConnectedError
