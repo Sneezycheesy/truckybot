@@ -35,6 +35,7 @@ class Music(commands.Cog):
                 for i in self.bot.voice_clients:
                     if i.channel is before.channel:
                         await i.disconnect()
+                        await self.bot.change_presence(activity=discord.Game(".help"))
 
 ########################################################################################################################
     # Commands #
