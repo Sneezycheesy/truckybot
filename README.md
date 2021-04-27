@@ -6,7 +6,7 @@
     <li>Play an audio stream in voice channels</li>
     <li>Show upcoming anime/manga, based on given arguments</li>
     <li>Post the latest Steam news of certain games, automatically checking every hour (needs to be initiated)</li>
-    <li>Display the song currently playing in the audio stream (<a href="http://truckers.fm">TruckerFM</a>)</li>
+    <li>Display the song currently playing in the audio stream (<a href="http://truckers.fm">TruckersFM</a>)</li>
     <li>Clean/Purge messages from a text channel</li>
   </ul>
 </p>
