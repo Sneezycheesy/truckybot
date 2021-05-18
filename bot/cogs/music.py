@@ -70,9 +70,10 @@ class Music(commands.Cog):
         name="connect",
         aliases=["join"],
         pass_context=True,
-        help="Connect to specified voice channel or channel you are currently in",
+        help="Connect to specified radio stream [neo, tfm, truckersfm] and channel",
+        parameters="neo, tfm, truckersfm"
     )
-    async def connect_to_voice(self, ctx, *, channel: t.Optional[discord.VoiceChannel]):
+    async def connect_to_voice(self, ctx, source: t.Optional[str], channel: t.Optional[discord.VoiceChannel]):
         if (channel := getattr(ctx.author.voice, "channel", channel)) is None:
             raise NoVoiceChannel
 
@@ -84,24 +85,15 @@ class Music(commands.Cog):
                 else:
                     raise AlreadyConnectedToChannel
             self.player = voice = await channel.connect()
-            self.playing = True
-            source = FFmpegPCMAudio("http://live.truckers.fm")
-            voice.play(source)
-            song = ""
 
-            while self.playing:
-                current_song_json = json.loads(requests
-                                               .get("https://api.truckyapp.com/v2/truckersfm/lastPlayed")
-                                               .content)["response"]
-
-                if song is not f"{current_song_json['artist']} - {current_song_json['title']}":
-                    song = f"{current_song_json['artist']} - {current_song_json['title']}"
-                    await self.bot.change_presence(
-                        activity=discord.Activity(
-                            type=discord.ActivityType.listening, name=song
-                        )
-                    )
-                await asyncio.sleep(5)
+            if source in [None, "neo"]:
+                new_source = FFmpegPCMAudio("http://curiosity.shoutca.st:6383/;stream.nsv")
+            elif source in ["tfm", "truckersfm"]:
+                new_source = FFmpegPCMAudio("http://live.truckers.fm")
+            else:
+                new_source = FFmpegPCMAudio(source)
+            
+            voice.play(new_source)
         else:
             await ctx.send("Can´t connect to that...")
 
