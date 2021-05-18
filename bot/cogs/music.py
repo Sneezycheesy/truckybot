@@ -83,31 +83,36 @@ class Music(commands.Cog):
                 await self.disconnect_from_voice(ctx)
             self.player = voice = await channel.connect()
 
-            if source in [None, "neo"]:
+            if source in [None, "neo", "Neo Radio"]:
                 new_source = FFmpegPCMAudio("http://curiosity.shoutca.st:6383/;stream.nsv")
-            elif source in ["tfm", "truckersfm"]:
+                source = "Neo Radio"
+            elif source in ["tfm", "truckersfm", "TruckersFM"]:
                 new_source = FFmpegPCMAudio("http://live.truckers.fm")
+                source = "TruckersFM"
             else:
                 new_source = FFmpegPCMAudio(source)
-                
+
             voice.play(new_source)
-            self.playing = True
+            await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=source))
+
         else:
             await ctx.send("Can´t connect to that...")
     
     @commands.command(name="tfm", aliases=["truckersfm"], pass_context=True, help="Play truckersFM on your joined channel or specified channel")
     async def connect_tfm_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
+        source = "TruckersFM"
         if channel is None:
-            await self.connect_to_voice(ctx, "tfm", ctx.voice_client)
+            await self.connect_to_voice(ctx, source, ctx.voice_client)
         else:
-            await self.connect_to_voice(ctx, "tfm", channel)
+            await self.connect_to_voice(ctx, source, channel)
 
     @commands.command(name="neo", aliases=["neofm"], pass_context=True, help="Play neo on your joined channel or specified channel")
     async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
+        source = "Neo Radio"
         if channel is None:
-            await self.connect_to_voice(ctx, "neo", ctx.voice_client)
+            await self.connect_to_voice(ctx, source, ctx.voice_client)
         else:
-            await self.connect_to_voice(ctx, "neo", channel)
+            await self.connect_to_voice(ctx, source, channel)
 
     # Command to disconnect from voice channel
     @commands.command(name="disconnect", aliases=["leave"], pass_context=True, help="Disconnect from active voice channel")
