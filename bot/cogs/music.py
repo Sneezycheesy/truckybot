@@ -80,10 +80,7 @@ class Music(commands.Cog):
         if channel is not None:
             voice_client = ctx.voice_client
             if voice_client is not None:
-                if channel is not ctx.voice_client.channel:
-                    await self.disconnect_from_voice(ctx)
-                else:
-                    raise AlreadyConnectedToChannel
+                await self.disconnect_from_voice(ctx)
             self.player = voice = await channel.connect()
 
             if source in [None, "neo"]:
@@ -92,8 +89,9 @@ class Music(commands.Cog):
                 new_source = FFmpegPCMAudio("http://live.truckers.fm")
             else:
                 new_source = FFmpegPCMAudio(source)
-            
+                
             voice.play(new_source)
+            self.playing = True
         else:
             await ctx.send("Can´t connect to that...")
     
