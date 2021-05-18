@@ -97,14 +97,14 @@ class Music(commands.Cog):
         else:
             await ctx.send("Can´t connect to that...")
     
-    @commands.command(name="tfm", aliases=["truckersfm"], pass_context=True)
+    @commands.command(name="tfm", aliases=["truckersfm"], pass_context=True, help="Play truckersFM on your joined channel or specified channel")
     async def connect_tfm_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
         if channel is None:
             await self.connect_to_voice(ctx, "tfm", ctx.voice_client)
         else:
             await self.connect_to_voice(ctx, "tfm", channel)
 
-    @commands.command(name="neo", aliases=["neofm"], pass_context=True)
+    @commands.command(name="neo", aliases=["neofm"], pass_context=True, help="Play neo on your joined channel or specified channel")
     async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
         if channel is None:
             await self.connect_to_voice(ctx, "neo", ctx.voice_client)
@@ -112,7 +112,7 @@ class Music(commands.Cog):
             await self.connect_to_voice(ctx, "neo", channel)
 
     # Command to disconnect from voice channel
-    @commands.command(name="disconnect", aliases=["leave"], pass_context=True)
+    @commands.command(name="disconnect", aliases=["leave"], pass_context=True, help="Disconnect from active voice channel")
     async def disconnect_from_voice(self, ctx):
         if ctx.voice_client is not None:
             self.player.stop()
@@ -122,7 +122,7 @@ class Music(commands.Cog):
         else:
             raise NotConnectedError
 
-    @commands.command(name="currentsong", aliases=["song", "current"], pass_content=True)
+    @commands.command(name="currentsong", aliases=["song", "current"], pass_content=True, help="Show song currently playing on TFM")
     async def current_song_command(self, ctx):
         current_song_json = json.loads(
             requests.get("https://api.truckyapp.com/v2/truckersfm/lastPlayed").content

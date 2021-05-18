@@ -77,11 +77,11 @@ class Steam(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="ets2", aliases=["ets"])
+    @commands.command(name="ets2", aliases=["ets"], help="Initialize ETS2 Steam News sync")
     async def steam_news_ets(self, ctx):
         await steam_news(self.bot, ctx, "ets")
 
-    @commands.command(name="ats", aliases=["amt"])
+    @commands.command(name="ats", aliases=["amt"], help="Initialize ATS Steam News sync")
     async def steam_news_ats(self, ctx):
         await steam_news(self.bot, ctx, "ats")
 

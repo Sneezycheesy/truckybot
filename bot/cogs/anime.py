@@ -142,7 +142,7 @@ class Anime(commands.Cog):
         }
         self.url = "https://graphql.anilist.co"
 
-    @commands.command(name="season", aliases=[])
+    @commands.command(name="season", aliases=[], help="List anime or manga by season")
     async def season_command(
             self,
             ctx,
@@ -159,7 +159,7 @@ class Anime(commands.Cog):
         await self.search_function(ctx)
         pass
 
-    @commands.command(name="search", aliases=[])
+    @commands.command(name="search", aliases=[], help="List anime or mange based on search term")
     async def search_command(self, ctx, term, per_page: t.Optional[int], media_type: t.Optional[str]):
         if media_type is not None:
             media_type = media_type.upper()
