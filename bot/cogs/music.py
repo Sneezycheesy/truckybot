@@ -96,6 +96,20 @@ class Music(commands.Cog):
             voice.play(new_source)
         else:
             await ctx.send("Can´t connect to that...")
+    
+    @commands.command(name="tfm", aliases=["truckersfm"], pass_context=True)
+    async def connect_tfm_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
+        if channel is None:
+            await self.connect_to_voice(ctx, "tfm", ctx.voice_client)
+        else:
+            await self.connect_to_voice(ctx, "tfm", channel)
+
+    @commands.command(name="neo", aliases=["neofm"], pass_context=True)
+    async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
+        if channel is None:
+            await self.connect_to_voice(ctx, "neo", ctx.voice_client)
+        else:
+            await self.connect_to_voice(ctx, "neo", channel)
 
     # Command to disconnect from voice channel
     @commands.command(name="disconnect", aliases=["leave"], pass_context=True)
@@ -135,7 +149,6 @@ class Music(commands.Cog):
             icon_url=self.bot.get_user(self.bot.client_id).avatar_url,
         )
         await ctx.send(embed=embedded_message)
-
 ########################################################################################################################
     # Error handling #
 ########################################################################################################################
