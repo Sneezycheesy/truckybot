@@ -25,6 +25,34 @@ class Music(commands.Cog):
         self.player = None
         self.playing = ""
 
+
+########################################################################################################################
+    # Helper Functions #
+########################################################################################################################
+    async def send_embedded_message_song(self, ctx, title, song, artist, thumbnail, footer, url = None):
+        embedded_message = discord.Embed(
+            title=title,
+            color=0x700A1B,
+        )
+
+        if url is None:
+            embedded_message.url = "https://spotify.com"
+        else:
+            embedded_message.url = url
+        
+        embedded_message.set_thumbnail(
+            url=thumbnail
+        )
+        embedded_message.add_field(
+            name=song,
+            value=artist,
+            inline=False,
+        )
+        embedded_message.set_footer(
+            text= footer,
+            icon_url=self.bot.get_user(self.bot.client_id).avatar_url,
+        )
+        await ctx.send(embed=embedded_message)
 ########################################################################################################################
     # Listeners #
 ########################################################################################################################
@@ -126,6 +154,9 @@ class Music(commands.Cog):
         else:
             raise NotConnectedError
 
+################################
+# START Currently Playing Song #
+################################
     @commands.command(name="currentsong", aliases=["song"], pass_content=True, help="Show song currently playing on current stream or specified stream")
     async def current_song_command(self, ctx, source: t.Optional[str]):
         if source is None:
@@ -149,62 +180,33 @@ class Music(commands.Cog):
         current_song_json = json.loads(
             requests.get("https://api.truckyapp.com/v2/truckersfm/lastPlayed").content
         )
-        url = current_song_json["response"]["link"]
-        title = current_song_json["response"]["title"]
+        title = "Now Playing On TruckersFM"
+        song = current_song_json["response"]["title"]
         artist = current_song_json["response"]["artist"]
-        played = f"This track has been played {current_song_json['response']['playcount']} times."
+        thumbnail = current_song_json['response']['album_art']
+        footer = f"This track has been played {current_song_json['response']['playcount']} times."
+        url = current_song_json["response"]["link"]
 
-        if url is None:
-            url = "http://spotify.com"
-        embedded_message = discord.Embed(
-            title="Now Playing On TruckersFM",
-            # description=f"{current_song_json['response']['artist']}",
-            url=f"{url}",
-            color=0x700A1B,
-        )
-        embedded_message.set_thumbnail(
-            url=f"{current_song_json['response']['album_art']}"
-        )
-        embedded_message.add_field(
-            name=f"{current_song_json['response']['title']}",
-            value=f"{current_song_json['response']['artist']}",
-            inline=False,
-        )
-        embedded_message.set_footer(
-            text= played,
-            icon_url=self.bot.get_user(self.bot.client_id).avatar_url,
-        )
-        await ctx.send(embed=embedded_message)
+        await self.send_embedded_message_song(ctx, title, song, artist, thumbnail, footer, url)
 
     async def show_currently_playing_song_neo(self, ctx):
-        image = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmytuner.global.ssl.fastly.net%2Fmedia%2Ftvos_radios%2Frgbdygbrjzms.png&f=1&nofb=1"
         current_song_json = json.loads(
             requests.get("https://scraper2.onlineradiobox.com/nz.neo").content
         )
         artist_title = current_song_json["title"].split(" - ")
+        title = "Now Playing On Neo Radio"
+        song = artist_title[1]
         artist = artist_title[0]
-        title = artist_title[1]
+        thumbnail = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmytuner.global.ssl.fastly.net%2Fmedia%2Ftvos_radios%2Frgbdygbrjzms.png&f=1&nofb=1"
+        footer="Enjoy Neo Radio."
 
-        text="Enjoy Neo Radio."
-
-        embedded_message = discord.Embed(
-            title="Now Playing On Neo Radio",
-            color=0x700A1B
-        )
-        embedded_message.set_thumbnail(url=image)
-        embedded_message.add_field(
-            name=title,
-            value=artist,
-            inline=False,
-        )
-        embedded_message.set_footer(
-            text=text,
-            icon_url=self.bot.get_user(self.bot.client_id).avatar_url,
-        )
-        await ctx.send(embed=embedded_message)
-########################################################################################################################
-    # Error handling #
-########################################################################################################################
+        await self.send_embedded_message_song(ctx, title, song, artist, thumbnail, footer)
+                                                                                                                    ##############################
+                                                                                                                    # END Currently Playing Song #
+                                                                                                                    ##############################
+######################
+# Error handling     #
+######################
     @connect_to_voice.error
     async def connect_command_error(self, ctx, exc):
         if isinstance(exc, AlreadyConnectedToChannel):

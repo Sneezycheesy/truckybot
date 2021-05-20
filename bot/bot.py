@@ -14,11 +14,6 @@ class TruckyBot(commands.Bot):
 
     def setup(self):
         print("Running setup...")
-
-        for cog in self._cogs:
-            self.load_extension(f"bot.cogs.{cog}")
-            print(f"Loaded {cog} cog.")
-
         print("Setup complete.")
 
     def run(self):
@@ -56,7 +51,16 @@ class TruckyBot(commands.Bot):
     async def on_ready(self):
         self.client_id = (await self.application_info()).id
         await self.change_presence(activity=discord.Game(".help"))
+        for cog in self._cogs:
+            self.load_extension(f"bot.cogs.{cog}")
+            print(f"Loaded {cog} cog.")
+
         print("Bot ready.")
+
+    # Start the steam_news_command in channels named appropriately
+    async def run_steam_news_in_specific_channels(self):
+        await self.cogs["Steam"].steam_news_ets(self.get_channel(831785058528264235))
+        pass
 
     async def prefix(self, bot, msg):
         return commands.when_mentioned_or(".")(bot, msg)

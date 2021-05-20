@@ -1,0 +1,4 @@
+- Automatic initialization of steam news in "ets2" and "ats" channels
+	* Check the name of the channel
+		- name in ["ets", "ets2", "eurotrucksim", "eurotrucksim2", "euro-truck-sim", "euro-truck-sim-2", "eurotrucksimulator", "eurotrucksimulator2", "euro-truck-simulator", "euro-truck-simulator-2"]
+		- name in ["ats", "americantrucksim", "americantrucksimulator", "american-truck-sim", "american-truck-simulator"]
