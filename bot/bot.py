@@ -1,6 +1,7 @@
 from pathlib import Path
 import discord
 from discord.ext import commands
+import asyncio
 
 
 class TruckyBot(commands.Bot):
@@ -55,12 +56,22 @@ class TruckyBot(commands.Bot):
             self.load_extension(f"bot.cogs.{cog}")
             print(f"Loaded {cog} cog.")
 
+        while True:
+            await self.run_steam_news_in_specific_channels("american-truck-sim")
+            await self.run_steam_news_in_specific_channels("euro-truck-sim-2")
+            await asyncio.sleep(3600)
         print("Bot ready.")
 
-    # Start the steam_news_command in channels named appropriately
-    async def run_steam_news_in_specific_channels(self):
-        await self.cogs["Steam"].steam_news_ets(self.get_channel(831785058528264235))
-        pass
+    # Start the steam_news_command in channels named appropriately ("american-truck-sim" for ats, "euro-truck-sim-2" for ets2)
+    async def run_steam_news_in_specific_channels(self, game):
+        for guild in self.guilds:
+            for channel in guild.channels:
+                if channel.name == game:
+                    if game == "american-truck-sim":
+                        await self.cogs["Steam"].steam_news_ats(channel)
+                    elif game == "euro-truck-sim-2":
+                        await self.cogs["Steam"].steam_news_ets(channel)
+    
 
     async def prefix(self, bot, msg):
         return commands.when_mentioned_or(".")(bot, msg)

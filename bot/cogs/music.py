@@ -35,10 +35,10 @@ class Music(commands.Cog):
             color=0x700A1B,
         )
 
-        if url is None:
-            embedded_message.url = "https://spotify.com"
-        else:
+        if url is not None:
             embedded_message.url = url
+        else:
+            embedded_message.url = "https://spotify.com"
         
         embedded_message.set_thumbnail(
             url=thumbnail

@@ -146,7 +146,7 @@ class Anime(commands.Cog):
     async def season_command(
             self,
             ctx,
-            season: t.Optional[str],
+            season,
             season_year: t.Optional[int],
             per_page: t.Optional[int]
     ):
