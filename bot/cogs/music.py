@@ -35,10 +35,10 @@ class Music(commands.Cog):
             color=0x700A1B,
         )
 
-        if url is not None:
+        if url is not None and url is not "":
             embedded_message.url = url
         else:
-            embedded_message.url = "https://spotify.com"
+            embedded_message.url = f"https://open.spotify.com/search/{artist}{song}".replace(' ', '&bspn')
         
         embedded_message.set_thumbnail(
             url=thumbnail
@@ -105,18 +105,22 @@ class Music(commands.Cog):
         if (channel := getattr(ctx.author.voice, "channel", channel)) is None:
             raise NoVoiceChannel
 
+        source = source.lower()
         if channel is not None:
             voice_client = ctx.voice_client
             if voice_client is not None:
                 await self.disconnect_from_voice(ctx)
             self.player = voice = await channel.connect()
 
-            if source in [None, "neo", "Neo Radio"]:
+            if source in [None, "neo", "neo radio"]:
                 new_source = FFmpegPCMAudio("http://curiosity.shoutca.st:6383/;stream.nsv")
                 source = "Neo Radio"
-            elif source in ["tfm", "truckersfm", "TruckersFM"]:
+            elif source in ["tfm", "truckersfm"]:
                 new_source = FFmpegPCMAudio("http://live.truckers.fm")
                 source = "TruckersFM"
+            elif source in ["tsfm", "trucksimfm"]:
+                new_source = FFmpegPCMAudio("http://live.trucksim.fm")
+                source = "TruckSimFM"
             else:
                 new_source = FFmpegPCMAudio(source)
 
@@ -129,7 +133,7 @@ class Music(commands.Cog):
     
     @commands.command(name="tfm", aliases=["truckersfm"], pass_context=True, help="Play truckersFM on your joined channel or specified channel")
     async def connect_tfm_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
-        source = "TruckersFM"
+        source = "truckersfm"
         if channel is None:
             await self.connect_to_voice(ctx, source, ctx.voice_client)
         else:
@@ -137,7 +141,15 @@ class Music(commands.Cog):
 
     @commands.command(name="neo", aliases=["neofm"], pass_context=True, help="Play neo on your joined channel or specified channel")
     async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
-        source = "Neo Radio"
+        source = "neo radio"
+        if channel is None:
+            await self.connect_to_voice(ctx, source, ctx.voice_client)
+        else:
+            await self.connect_to_voice(ctx, source, channel)
+
+    @commands.command(name="tsfm", aliases=["trucksimfm"], pass_context=True, help="Play truckSimFM on your joined channel or specified channel")
+    async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
+        source = "trucksimfm"
         if channel is None:
             await self.connect_to_voice(ctx, source, ctx.voice_client)
         else:
@@ -201,9 +213,9 @@ class Music(commands.Cog):
         footer="Enjoy Neo Radio."
 
         await self.send_embedded_message_song(ctx, title, song, artist, thumbnail, footer)
-                                                                                                                    ##############################
-                                                                                                                    # END Currently Playing Song #
-                                                                                                                    ##############################
+##############################
+# END Currently Playing Song #
+##############################
 ######################
 # Error handling     #
 ######################
