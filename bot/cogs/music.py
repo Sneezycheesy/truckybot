@@ -38,7 +38,7 @@ class Music(commands.Cog):
         if url is not None and url != "":
             embedded_message.url = url
         else:
-            embedded_message.url = f"https://open.spotify.com/search/{artist}{song}".replace(' ', '&bspn')
+            embedded_message.url = f"https://open.spotify.com/search/{artist} {song}".replace(' ', '%20')
         
         embedded_message.set_thumbnail(
             url=thumbnail
