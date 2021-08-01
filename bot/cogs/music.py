@@ -35,7 +35,7 @@ class Music(commands.Cog):
             color=0x700A1B,
         )
 
-        if url is not None and url is not "":
+        if url is not None and url != "":
             embedded_message.url = url
         else:
             embedded_message.url = f"https://open.spotify.com/search/{artist}{song}".replace(' ', '&bspn')
