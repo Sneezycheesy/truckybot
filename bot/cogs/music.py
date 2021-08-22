@@ -1,10 +1,13 @@
 import asyncio
+import typing
 import typing as t
 import discord
+import discord.opus
 from discord.ext import commands
 import requests
 import json
-
+import youtube_dl
+import os
 from discord import FFmpegPCMAudio
 
 
@@ -15,7 +18,16 @@ class AlreadyConnectedToChannel(commands.CommandError):
 class NoVoiceChannel(commands.CommandError):
     pass
 
+
 class NotConnectedError(commands.CommandError):
+    pass
+
+
+class NoSourceError(commands.CommandError):
+    pass
+
+
+class InvalidSourceError(commands.CommandError):
     pass
 
 
@@ -23,7 +35,28 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.player = None
-        self.playing = ""
+        self.radio = None
+        self.current_song = None
+        self.playing = False
+        self.queue = {}
+        self.voice_clients = {}
+
+        self.ytl_opts = {
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'outtmpl': '%(title)s.%(ext)s',
+        }
+
+        self.sources = {
+            "neo": "http://curiosity.shoutca.st:6383/;stream.nsv",
+            "tfm": "http://live.truckers.fm",
+            "truckersfm": "http://live.truckers.fm",
+            "tsfm": "http://live.trucksim.fm"
+        }
 
 
 ########################################################################################################################
@@ -53,6 +86,35 @@ class Music(commands.Cog):
             icon_url=self.bot.get_user(self.bot.client_id).avatar_url,
         )
         await ctx.send(embed=embedded_message)
+
+    # Used as switch statement
+    # Using .join neo would work, because it is a known source
+    def get_predetermined_source(self, source):
+        return self.sources.get(source, None)
+
+
+    # Functions
+    async def fix_audio_stream_error(self, ctx):
+        if ctx.voice_client is not None:
+            self.player.stop()
+            await ctx.guild.voice_client.disconnect()
+            await self.bot.change_presence(activity=discord.Game(".help"))
+        else:
+            raise NotConnectedError
+
+    async def play_next_song(self, ctx):
+        guild_id = ctx.message.guild.id
+        if self.current_song is not None:
+            for file in os.listdir("./"):
+                if file == f"{self.current_song}.mp3":
+                    os.remove(file)
+            self.queue[guild_id].pop(self.current_song)
+        if len(self.queue[guild_id]) < 1:
+            if self.radio is not None:
+                await self.connect_to_voice(ctx, self.radio)
+            else:
+                await self.disconnect_from_voice(ctx)
+        pass
 ########################################################################################################################
     # Listeners #
 ########################################################################################################################
@@ -63,108 +125,113 @@ class Music(commands.Cog):
             if not [m for m in before.channel.members if not m.bot]:
                 for i in self.bot.voice_clients:
                     if i.channel is before.channel:
-                        self.player.stop()
                         await i.disconnect()
                         self.playing = False
                         await self.bot.change_presence(activity=discord.Game(".help"))
 
+    async def cog_check(self, ctx):
+        if isinstance(ctx.channel, discord.DMChannel):
+            await ctx.send("Music commands are not available in DMs.")
+            return False
+        return True
+
 ########################################################################################################################
     # Commands #
 ########################################################################################################################
-
-    # Test command, remove before production
-    @commands.command(name="test")
-    async def test_command(self, ctx):
-        print(ctx.voice_client.channel)
-
-    # Command to clean chat by <amount> (default=50) of messages
-    @commands.command(name="purge", aliases=["clean"])
-    async def clean_chat(
-            self, ctx, amount: t.Optional[int], user: t.Optional[discord.User]
-    ):
-        if amount is None:
-            amount = 50
-
-        history = ctx.history(limit=amount)
-        async for message in history:
-            if user is not None:
-                if message.author.id == user.id:
-                    await message.delete()
-            else:
-                await message.delete()
-
-    # Command to connect to voice channel <channel>
     @commands.command(
-        name="connect",
-        aliases=["join"],
-        pass_context=True,
-        help="Connect to specified radio stream [neo, tfm, truckersfm] and channel",
-        parameters="neo, tfm, truckersfm"
+        name="sources",
+        aliases=[],
+        help="Show a message listing the predetermined sources.",
+        description="Show a message listing the predetermined sources, so you don't have to type their whole links."
     )
-    async def connect_to_voice(self, ctx, source: t.Optional[str], channel: t.Optional[discord.VoiceChannel]):
-        if (channel := getattr(ctx.author.voice, "channel", channel)) is None:
+    async def sources_command(self, ctx):
+        message = "Current predetermined sources are:\n"
+        for source in self.sources:
+            message += f"\t{source}\n"
+        await ctx.send(message)
+
+    @commands.command(
+        name="join",
+        aliases=["connect", "voice"],
+        help="Play a specified radio stream link in your current voice channel, "
+             "or supply the required voice channel name in quotes."
+             "The template for this: .join [source] [channel], type '.sources' to view predetermined sources",
+        description="Play a specified radio stream link in your current voice channel"
+
+    )
+    async def join_command(self, ctx, source: t.Optional[str], channel: t.Optional[discord.VoiceChannel]):
+        guild_id = ctx.message.guild.id
+        await self.setup_voice_connection(ctx, channel, guild_id)
+        self.play_audio_in_voice(source, guild_id)
+
+    # START setup_voice_connection FUNCTION
+    async def setup_voice_connection(self, ctx, channel, guild_id):
+        if (new_channel := getattr(ctx.author.voice, "channel", channel)) is None:
+            raise NoVoiceChannel
+        # Disconnect if we're changing to another channel (for example "General" => "Test"
+        if guild_id in self.voice_clients and self.voice_clients[guild_id].channel != new_channel:
+            await ctx.guild.voice_client.disconnect()
+            self.voice_clients[guild_id] = await new_channel.connect()
+        # Connect to the channel if it's not yet connected to anything (So no disconnect is needed)
+        elif guild_id not in self.voice_clients:
+            self.voice_clients[guild_id] = await new_channel.connect()
+    # END setup_voice_connection FUNCTION
+
+    # START play_audio_in_voice FUNCTION
+    def play_audio_in_voice(self, source, guild_id):
+        if source is None:
+            raise NoSourceError
+
+        if (new_source := self.get_predetermined_source(source)) is not None:
+            source = new_source
+        source = FFmpegPCMAudio(source)
+
+        if source.read():
+            if self.voice_clients[guild_id].is_playing():
+                self.voice_clients[guild_id].source = source
+            else:
+                self.voice_clients[guild_id].play(source)
+        else:
+            raise InvalidSourceError
+    # END play_audio_in_voice FUNCTION
+
+    @commands.command(name="play", aliases=[], help="Play audio (from youtube) by supplying the requested link.")
+    async def queue_song(self, ctx, source: str, channel: t.Optional[discord.VoiceChannel]):
+        if source is None:
             raise NoVoiceChannel
 
-        source = source.lower()
-        if channel is not None:
-            voice_client = ctx.voice_client
-            if voice_client is not None:
-                await self.disconnect_from_voice(ctx)
-            self.player = voice = await channel.connect()
+        guild_id = ctx.message.guild.id
 
-            if source in [None, "neo", "neo radio"]:
-                new_source = FFmpegPCMAudio("http://curiosity.shoutca.st:6383/;stream.nsv")
-                source = "Neo Radio"
-            elif source in ["tfm", "truckersfm"]:
-                new_source = FFmpegPCMAudio("http://live.truckers.fm")
-                source = "TruckersFM"
-            elif source in ["tsfm", "trucksimfm"]:
-                new_source = FFmpegPCMAudio("http://live.trucksim.fm")
-                source = "TruckSimFM"
+        with youtube_dl.YoutubeDL(self.ytl_opts) as ydl:
+            result = ydl.extract_info(source, download=False)
+        # Add each video to queue when it is a playlist
+        if 'entries' in result:
+            for entry in result['entries']:
+                if ctx.message.guild.id in self.queue:
+                    self.queue[guild_id].append(entry['url'])
+                else:
+                    self.queue[guild_id] = [entry['url']]
+        # Add to queue when it's not a playlist
+        else:
+            if guild_id in self.queue:
+                self.queue[guild_id].append(result['url'])
             else:
-                new_source = FFmpegPCMAudio(source)
-
-            voice.play(new_source)
-            await self.bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=source))
-            self.playing = source
-
-        else:
-            await ctx.send("Can´t connect to that...")
-    
-    @commands.command(name="tfm", aliases=["truckersfm"], pass_context=True, help="Play truckersFM on your joined channel or specified channel")
-    async def connect_tfm_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
-        source = "truckersfm"
-        if channel is None:
-            await self.connect_to_voice(ctx, source, ctx.voice_client)
-        else:
-            await self.connect_to_voice(ctx, source, channel)
-
-    @commands.command(name="neo", aliases=["neofm"], pass_context=True, help="Play neo on your joined channel or specified channel")
-    async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
-        source = "neo radio"
-        if channel is None:
-            await self.connect_to_voice(ctx, source, ctx.voice_client)
-        else:
-            await self.connect_to_voice(ctx, source, channel)
-
-    @commands.command(name="tsfm", aliases=["trucksimfm"], pass_context=True, help="Play truckSimFM on your joined channel or specified channel")
-    async def connect_neo_command(self, ctx, channel: t.Optional[discord.VoiceChannel]):
-        source = "trucksimfm"
-        if channel is None:
-            await self.connect_to_voice(ctx, source, ctx.voice_client)
-        else:
-            await self.connect_to_voice(ctx, source, channel)
+                self.queue[guild_id] = [result['url']]
 
     # Command to disconnect from voice channel
-    @commands.command(name="disconnect", aliases=["leave"], pass_context=True, help="Disconnect from active voice channel")
+    @commands.command(name="disconnect", aliases=["leave"], pass_context=True,
+                      help="Disconnect from active voice channel")
     async def disconnect_from_voice(self, ctx):
-        if ctx.voice_client is not None:
-            self.player.stop()
+        guild_id = ctx.message.guild.id
+        if guild_id in self.voice_clients:
             await ctx.guild.voice_client.disconnect()
+            self.voice_clients.pop(guild_id)
             self.playing = False
+            self.radio = None
             await self.bot.change_presence(activity=discord.Game(".help"))
         else:
             raise NotConnectedError
+
 
 ################################
 # START Currently Playing Song #
@@ -198,7 +265,6 @@ class Music(commands.Cog):
         thumbnail = current_song_json['response']['album_art']
         footer = f"This track has been played {current_song_json['response']['playcount']} times."
         url = current_song_json["response"]["link"]
-
         await self.send_embedded_message_song(ctx, title, song, artist, thumbnail, footer, url)
 
     async def show_currently_playing_song_neo(self, ctx):
@@ -219,21 +285,19 @@ class Music(commands.Cog):
 ######################
 # Error handling     #
 ######################
-    @connect_to_voice.error
-    async def connect_command_error(self, ctx, exc):
-        if isinstance(exc, AlreadyConnectedToChannel):
-            await ctx.send("Already connected...")
-        elif isinstance(exc, NoVoiceChannel):
-            await ctx.send("No channel to connect to...")
-
     @disconnect_from_voice.error
     async def disconnect_error(self, ctx, exc):
         await ctx.send("Cannot disconnect... Help")
 
-    # Functions
-    async def fix_audio_stream_error(self):
-        await self.player.stop()
-        await self.player.start("http://live.truckers.fm")
+    @join_command.error
+    async def no_source_error(self, ctx, exc):
+        if isinstance(exc, InvalidSourceError):
+            await ctx.send("Invalid source, disconnecting..", delete_after=5.0)
+            await ctx.guild.voice_client.disconnect()
+            self.voice_clients.pop(ctx.message.guild.id)
+        if isinstance(exc, NoVoiceChannel):
+            await ctx.send("No Voice Channel Selected... Try again.", delete_after=8.5)
+
 
 def setup(bot):
     bot.add_cog(Music(bot))
