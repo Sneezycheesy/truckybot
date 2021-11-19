@@ -55,7 +55,8 @@ class Music(commands.Cog):
             "neo": "http://curiosity.shoutca.st:6383/;stream.nsv",
             "tfm": "http://live.truckers.fm",
             "truckersfm": "http://live.truckers.fm",
-            "tsfm": "http://live.trucksim.fm"
+            "tsfm": "http://live.trucksim.fm",
+            "nrfm": "https://stream.nightride.fm/nightride.m4a"
         }
 
 
