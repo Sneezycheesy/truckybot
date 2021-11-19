@@ -121,6 +121,9 @@ class Music(commands.Cog):
             elif source in ["tsfm", "trucksimfm"]:
                 new_source = FFmpegPCMAudio("http://live.trucksim.fm")
                 source = "TruckSimFM"
+            elif source in ["nightride", "nrfm", "nightridefm"]:
+                new_source = FFmpegPCMAudio("https://stream.nightride.fm/nightride.m4a")
+                source = "NightRideFM"
             else:
                 new_source = FFmpegPCMAudio(source)
 
